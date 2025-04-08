@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="hr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auto Oglasi</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f2f2f2;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform 0.2s;
+    }
+
+    .card:hover {
+      transform: scale(1.02);
+    }
+
+    .card img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+    }
+
+    .card-content {
+      padding: 15px;
+    }
+
+    .details {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 600px;
+      margin: 0 auto;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .button:hover {
+      background-color: #0056b3;
+    }
+
+    .form-section {
+      margin-bottom: 40px;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-section input,
+    .form-section textarea {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Auto Oglasi</h1>
+    <button class="button" onclick="obrisiSve()">Obriši sve oglase</button>
+    <div class="form-section">
+      <h2>Dodaj / Uredi automobil</h2>
+      <input type="hidden" id="editIndex" />
+      <input type="text" id="naziv" placeholder="Naziv automobila" />
+      <input type="text" id="kilometri" placeholder="Kilometraža" />
+      <input type="number" id="godina" placeholder="Godina" />
+      <input type="text" id="cijena" placeholder="Cijena" />
+      <input type="text" id="vlasnik" placeholder="Kontakt broj" />
+      <textarea id="opis" placeholder="Opis"></textarea>
+      <input type="file" id="slikaFile" accept="image/*" />
+      <button class="button" onclick="dodajIliUrediAuto()">Spremi</button>
+    </div>
+
+    <div id="oglasi" class="grid"></div>
+    <div id="detalji" style="display:none;"></div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'auto_oglasi_lista';
+
+    let cars = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [
+      { naziv: "Volkswagen Golf", kilometri: "150000 km", godina: 2015, cijena: "9,000 EUR", vlasnik: "0912345678", opis: "Odlično stanje, redovno servisiran.", slika: "img/golf.jpg" },
+      { naziv: "Audi A4", kilometri: "120000 km", godina: 2018, cijena: "15,000 EUR", vlasnik: "0923456789", opis: "S-line paket, dizel.", slika: "img/audi_a4.jpg" },
+      { naziv: "BMW 320d", kilometri: "170000 km", godina: 2014, cijena: "12,500 EUR", vlasnik: "0934567890", opis: "Full oprema, registriran godinu dana.", slika: "img/bmw_320d.jpg" },
+      { naziv: "Opel Astra", kilometri: "130000 km", godina: 2017, cijena: "8,500 EUR", vlasnik: "0945678901", opis: "Prvi vlasnik, garažiran auto.", slika: "img/astra.jpg" },
+      { naziv: "Renault Megane", kilometri: "110000 km", godina: 2016, cijena: "7,500 EUR", vlasnik: "0956789012", opis: "Mali potrošač, gradski auto.", slika: "img/megane.jpg" },
+      { naziv: "Toyota Corolla", kilometri: "90000 km", godina: 2019, cijena: "13,000 EUR", vlasnik: "0967890123", opis: "Pouzdan japanski auto.", slika: "img/corolla.jpg" },
+      { naziv: "Peugeot 308", kilometri: "140000 km", godina: 2015, cijena: "6,800 EUR", vlasnik: "0978901234", opis: "Ekonomično vozilo, novi akumulator.", slika: "img/peugeot_308.jpg" },
+      { naziv: "Ford Focus", kilometri: "160000 km", godina: 2016, cijena: "7,000 EUR", vlasnik: "0989012345", opis: "Dobro očuvan, uredna unutrašnjost.", slika: "img/focus.jpg" },
+      { naziv: "Mazda 3", kilometri: "100000 km", godina: 2018, cijena: "10,000 EUR", vlasnik: "0990123456", opis: "Dinamična vožnja, redovni servisi.", slika: "img/mazda3.jpg" },
+      { naziv: "Hyundai i30", kilometri: "95000 km", godina: 2019, cijena: "9,500 EUR", vlasnik: "0911234567", opis: "Mali gradski auto, odlična oprema.", slika: "img/i30.jpg" }
+    ];
+
+    const oglasiDiv = document.getElementById('oglasi');
+    const detaljiDiv = document.getElementById('detalji');
+
+    function spremiULokalnuMemoriju() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cars));
+    }
+
+    function prikaziOglase() {
+      detaljiDiv.style.display = 'none';
+      oglasiDiv.style.display = 'grid';
+      oglasiDiv.innerHTML = '';
+
+      cars.forEach((auto, index) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <img src="${auto.slika}" alt="${auto.naziv}" />
+          <div class="card-content">
+            <h3>${auto.naziv}</h3>
+            <p>${auto.kilometri}</p>
+            <p>${auto.cijena}</p>
+            <button class="button" onclick="urediAuto(${index})">Uredi</button>
+            <button class="button" onclick="obrisiAuto(${index})">Obriši</button>
+          </div>
+        `;
+        card.onclick = (e) => {
+          if (!e.target.closest('button')) prikaziDetalje(auto);
+        };
+        oglasiDiv.appendChild(card);
+      });
+    }
+
+    function prikaziDetalje(auto) {
+      oglasiDiv.style.display = 'none';
+      detaljiDiv.style.display = 'block';
+      detaljiDiv.innerHTML = `
+        <div class="details">
+          <img src="${auto.slika}" alt="${auto.naziv}" style="width:100%; height:300px; object-fit:cover; border-radius:10px; margin-bottom: 15px;" />
+          <h2>${auto.naziv}</h2>
+          <p><strong>Godina:</strong> ${auto.godina}</p>
+          <p><strong>Kilometara:</strong> ${auto.kilometri}</p>
+          <p><strong>Cijena:</strong> ${auto.cijena}</p>
+          <p><strong>Opis:</strong> ${auto.opis}</p>
+          <p><strong>Kontakt:</strong> ${auto.vlasnik}</p>
+          <button class="button" onclick="prikaziOglase()">Natrag</button>
+        </div>
+      `;
+    }
+
+    function dodajIliUrediAuto() {
+      const editIndex = document.getElementById('editIndex').value;
+      const fileInput = document.getElementById('slikaFile');
+      const file = fileInput.files[0];
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const noviAuto = {
+          id: Date.now(),
+          naziv: document.getElementById('naziv').value,
+          kilometri: document.getElementById('kilometri').value,
+          godina: document.getElementById('godina').value,
+          cijena: document.getElementById('cijena').value,
+          vlasnik: document.getElementById('vlasnik').value,
+          opis: document.getElementById('opis').value,
+          slika: e.target.result
+        };
+
+        if (editIndex) {
+          noviAuto.id = cars[editIndex].id;
+          cars[editIndex] = noviAuto;
+          document.getElementById('editIndex').value = '';
+        } else {
+          cars.push(noviAuto);
+        }
+
+        spremiULokalnuMemoriju();
+        ocistiFormu();
+        prikaziOglase();
+      };
+
+      if (file) {
+        reader.readAsDataURL(file);
+      } else {
+        if (editIndex) {
+          const auto = cars[editIndex];
+          const noviAuto = {
+            id: auto.id,
+            naziv: document.getElementById('naziv').value,
+            kilometri: document.getElementById('kilometri').value,
+            godina: document.getElementById('godina').value,
+            cijena: document.getElementById('cijena').value,
+            vlasnik: document.getElementById('vlasnik').value,
+            opis: document.getElementById('opis').value,
+            slika: auto.slika
+          };
+          cars[editIndex] = noviAuto;
+          document.getElementById('editIndex').value = '';
+          spremiULokalnuMemoriju();
+          ocistiFormu();
+          prikaziOglase();
+        }
+      }
+    }
+
+    function obrisiAuto(index) {
+      cars.splice(index, 1);
+      spremiULokalnuMemoriju();
+      prikaziOglase();
+    }
+
+    function urediAuto(index) {
+      const auto = cars[index];
+      document.getElementById('editIndex').value = index;
+      document.getElementById('naziv').value = auto.naziv;
+      document.getElementById('kilometri').value = auto.kilometri;
+      document.getElementById('godina').value = auto.godina;
+      document.getElementById('cijena').value = auto.cijena;
+      document.getElementById('vlasnik').value = auto.vlasnik;
+      document.getElementById('opis').value = auto.opis;
+      window.scrollTo(0, 0);
+    }
+
+    function ocistiFormu() {
+      document.getElementById('naziv').value = '';
+      document.getElementById('kilometri').value = '';
+      document.getElementById('godina').value = '';
+      document.getElementById('cijena').value = '';
+      document.getElementById('vlasnik').value = '';
+      document.getElementById('opis').value = '';
+      document.getElementById('slikaFile').value = '';
+    }
+    function obrisiSve() {
+      if (confirm("Jeste li sigurni da želite obrisati sve oglase?")) {
+        localStorage.removeItem(STORAGE_KEY);
+        cars = [];
+        prikaziOglase();
+      }
+    }
+
+    prikaziOglase();
+  </script>
+</body>
+
+</html>
