@@ -267,9 +267,10 @@
       if (confirm("Jeste li sigurni da želite obrisati sve oglase?")) {
         localStorage.removeItem(STORAGE_KEY);
         cars = [];
-        prikaziOglase();
+        location.reload();
       }
     }
+
 
     prikaziOglase();
   </script>
