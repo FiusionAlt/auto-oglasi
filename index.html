@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Auto Oglasi</title>
   <style>
     body {
@@ -99,7 +99,7 @@
       <input type="text" id="cijena" placeholder="Cijena" />
       <input type="text" id="vlasnik" placeholder="Kontakt broj" />
       <textarea id="opis" placeholder="Opis"></textarea>
-      <input type="file" id="slikaFile" accept="image/*" />
+      <input type="file" id="slikaFile" accept="image/*" multiple />
       <button class="button" onclick="dodajIliUrediAuto()">Spremi</button>
     </div>
 
@@ -135,7 +135,7 @@
         card.className = 'card';
 
         card.innerHTML = `
-          <img src="${auto.slika}" alt="${auto.naziv}" />
+          <img src="${(auto.slike && auto.slike[0]) || auto.slika}" alt="${auto.naziv}" />
           <div class="card-content">
             <h3>${auto.naziv}</h3>
             <p>${auto.kilometri}</p>
@@ -155,54 +155,59 @@
 
     function dodajIliUrediAuto() {
       const editIndex = document.getElementById('editIndex').value;
-      const fileInput = document.getElementById('slikaFile');
-      const file = fileInput.files[0];
+      const files = document.getElementById('slikaFile').files;
 
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const noviAuto = {
-          id: editIndex ? cars[editIndex].id : Date.now(),
-          naziv: document.getElementById('naziv').value,
-          kilometri: document.getElementById('kilometri').value,
-          godina: document.getElementById('godina').value,
-          cijena: document.getElementById('cijena').value,
-          vlasnik: document.getElementById('vlasnik').value,
-          opis: document.getElementById('opis').value,
-          slika: e.target.result
-        };
+      const naziv = document.getElementById('naziv').value;
+      const kilometri = document.getElementById('kilometri').value;
+      const godina = document.getElementById('godina').value;
+      const cijena = document.getElementById('cijena').value;
+      const vlasnik = document.getElementById('vlasnik').value;
+      const opis = document.getElementById('opis').value;
 
+      const noviAuto = {
+        id: editIndex ? cars[editIndex].id : Date.now(),
+        naziv,
+        kilometri,
+        godina,
+        cijena,
+        vlasnik,
+        opis,
+        slike: []
+      };
+
+      const spremiIOsvjezi = () => {
         if (editIndex) {
           cars[editIndex] = noviAuto;
-          document.getElementById('editIndex').value = '';
         } else {
           cars.push(noviAuto);
         }
-
         spremiULokalnuMemoriju();
         ocistiFormu();
         prikaziOglase();
       };
 
-      if (file) {
-        reader.readAsDataURL(file);
-      } else if (editIndex) {
-        const auto = cars[editIndex];
-        const noviAuto = {
-          ...auto,
-          naziv: document.getElementById('naziv').value,
-          kilometri: document.getElementById('kilometri').value,
-          godina: document.getElementById('godina').value,
-          cijena: document.getElementById('cijena').value,
-          vlasnik: document.getElementById('vlasnik').value,
-          opis: document.getElementById('opis').value
-        };
-        cars[editIndex] = noviAuto;
-        document.getElementById('editIndex').value = '';
-        spremiULokalnuMemoriju();
-        ocistiFormu();
-        prikaziOglase();
+      if (files.length > 0) {
+        let ucitane = 0;
+        Array.from(files).forEach(file => {
+          const reader = new FileReader();
+          reader.onload = e => {
+            noviAuto.slike.push(e.target.result);
+            ucitane++;
+            if (ucitane === files.length) {
+              spremiIOsvjezi();
+            }
+          };
+          reader.readAsDataURL(file);
+        });
+      } else {
+        // Ako nema novih slika, koristi stare (ako uređujemo)
+        if (editIndex) {
+          noviAuto.slike = cars[editIndex].slike || [cars[editIndex].slika];
+        }
+        spremiIOsvjezi();
       }
     }
+
 
     function urediAuto(index) {
       const auto = cars[index];
@@ -228,6 +233,7 @@
       if (confirm("Jeste li sigurni da želite obrisati sve oglase?")) {
         localStorage.removeItem(STORAGE_KEY);
         cars = [];
+        location.reload();
         prikaziOglase();
       }
     }
