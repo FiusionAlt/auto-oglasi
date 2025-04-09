@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="hr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detalji Oglasa</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .car-image {
+      width: 100%;
+      height: auto;
+      max-height: 400px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    .info {
+      line-height: 1.8;
+      font-size: 18px;
+    }
+
+    .info strong {
+      display: inline-block;
+      width: 120px;
+    }
+
+    .back-button {
+      display: inline-block;
+      margin-top: 30px;
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      transition: background-color 0.2s;
+    }
+
+    .back-button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container" id="detaljiContainer">
+    <h1>Detalji Oglasa</h1>
+    <div id="sadrzaj"></div>
+    <a class="back-button" href="index.html">⟵ Natrag</a>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'auto_oglasi_lista';
+
+    const fallbackCars = [
+      { id: 1, naziv: "Volkswagen Golf", kilometri: "150000 km", godina: 2015, cijena: "9,000 EUR", vlasnik: "0912345678", opis: "Odlično stanje, redovno servisiran.", slika: "img/golf.jpg" },
+      { id: 2, naziv: "Audi A4", kilometri: "120000 km", godina: 2018, cijena: "15,000 EUR", vlasnik: "0923456789", opis: "S-line paket, dizel.", slika: "img/audi_a4.jpg" },
+      { id: 3, naziv: "BMW 320d", kilometri: "170000 km", godina: 2014, cijena: "12,500 EUR", vlasnik: "0934567890", opis: "Full oprema, registriran godinu dana.", slika: "img/bmw_320d.jpg" },
+      { id: 4, naziv: "Opel Astra", kilometri: "130000 km", godina: 2017, cijena: "8,500 EUR", vlasnik: "0945678901", opis: "Prvi vlasnik, garažiran auto.", slika: "img/astra.jpg" },
+      { id: 5, naziv: "Renault Megane", kilometri: "110000 km", godina: 2016, cijena: "7,500 EUR", vlasnik: "0956789012", opis: "Mali potrošač, gradski auto.", slika: "img/megane.jpg" },
+      { id: 6, naziv: "Toyota Corolla", kilometri: "90000 km", godina: 2019, cijena: "13,000 EUR", vlasnik: "0967890123", opis: "Pouzdan japanski auto.", slika: "img/corolla.jpg" },
+      { id: 7, naziv: "Peugeot 308", kilometri: "140000 km", godina: 2015, cijena: "6,800 EUR", vlasnik: "0978901234", opis: "Ekonomično vozilo, novi akumulator.", slika: "img/peugeot_308.jpg" },
+      { id: 8, naziv: "Ford Focus", kilometri: "160000 km", godina: 2016, cijena: "7,000 EUR", vlasnik: "0989012345", opis: "Dobro očuvan, uredna unutrašnjost.", slika: "img/focus.jpg" },
+      { id: 9, naziv: "Mazda 3", kilometri: "100000 km", godina: 2018, cijena: "10,000 EUR", vlasnik: "0990123456", opis: "Dinamična vožnja, redovni servisi.", slika: "img/mazda3.jpg" },
+      { id: 10, naziv: "Hyundai i30", kilometri: "95000 km", godina: 2019, cijena: "9,500 EUR", vlasnik: "0911234567", opis: "Mali gradski auto, odlična oprema.", slika: "img/i30.jpg" }
+    ];
+
+    function dohvatiParametarIzURLa(naziv) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(naziv);
+    }
+
+    function prikaziDetalje() {
+      const id = parseInt(dohvatiParametarIzURLa('id'), 10);
+
+      let oglasi = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+      if (!oglasi || oglasi.length === 0) {
+        oglasi = fallbackCars;
+      }
+
+      const auto = oglasi.find(o => parseInt(o.id) === id);
+      const sadrzaj = document.getElementById('sadrzaj');
+
+      if (!auto) {
+        sadrzaj.innerHTML = "<p>Oglas nije pronađen.</p>";
+        return;
+      }
+
+      sadrzaj.innerHTML = `
+        <img src="${auto.slika || auto.slike?.[0] || 'img/default.jpg'}" alt="${auto.naziv}" class="car-image" />
+        <div class="info">
+          <p><strong>Naziv:</strong> ${auto.naziv}</p>
+          <p><strong>Kilometraža:</strong> ${auto.kilometri}</p>
+          <p><strong>Godina:</strong> ${auto.godina}</p>
+          <p><strong>Cijena:</strong> ${auto.cijena}</p>
+          <p><strong>Kontakt:</strong> ${auto.vlasnik}</p>
+          <p><strong>Opis:</strong> ${auto.opis}</p>
+        </div>
+      `;
+    }
+
+    document.addEventListener('DOMContentLoaded', prikaziDetalje);
+  </script>
+</body>
+
+</html>
