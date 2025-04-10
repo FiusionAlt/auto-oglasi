@@ -22,12 +22,50 @@
     h1 {
       text-align: center;
       margin-bottom: 30px;
+      color: #2c3e50;
+    }
+
+    .search-filters {
+      margin: 20px 0;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: white;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-btn {
+      padding: 8px 16px;
+      border-radius: 20px;
+      background: #e9ecef;
+      border: 1px solid #dee2e6;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .filter-btn.active {
+      background: #007bff;
+      color: white;
+      border-color: #007bff;
+    }
+
+    .search-bar {
+      flex: 1;
+      min-width: 250px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
     }
 
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 20px;
+      margin-top: 20px;
     }
 
     .card {
@@ -40,17 +78,28 @@
     }
 
     .card:hover {
-      transform: scale(1.02);
+      transform: translateY(-5px);
     }
 
     .card img {
       width: 100%;
-      height: 180px;
+      height: 200px;
       object-fit: cover;
+      border-bottom: 1px solid #eee;
     }
 
     .card-content {
       padding: 15px;
+    }
+
+    .card-content h3 {
+      margin: 0 0 10px;
+      color: #2c3e50;
+    }
+
+    .card-content p {
+      margin: 5px 0;
+      color: #7f8c8d;
     }
 
     .button {
@@ -61,6 +110,7 @@
       border: none;
       border-radius: 8px;
       cursor: pointer;
+      transition: background-color 0.2s;
     }
 
     .button:hover {
@@ -70,7 +120,7 @@
     .form-section {
       margin-bottom: 40px;
       background: white;
-      padding: 20px;
+      padding: 25px;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
@@ -78,10 +128,26 @@
     .form-section input,
     .form-section textarea {
       width: 100%;
-      padding: 10px;
-      margin-bottom: 10px;
-      border: 1px solid #ccc;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
       border-radius: 8px;
+      font-size: 16px;
+    }
+
+    .delete-all {
+      background-color: #e74c3c;
+      margin-bottom: 20px;
+    }
+
+    .delete-all:hover {
+      background-color: #c0392b;
+    }
+
+    @media (max-width: 768px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -89,17 +155,27 @@
 <body>
   <div class="container">
     <h1>Auto Oglasi</h1>
-    <button class="button" onclick="obrisiSve()">Obriši sve oglase</button>
+
+    <div class="search-filters">
+      <input type="text" class="search-bar" placeholder="Pretraži oglase..." id="searchInput">
+      <button class="filter-btn active" data-filter="all">Svi</button>
+      <button class="filter-btn" data-filter="new">Novi (0-2g)</button>
+      <button class="filter-btn" data-filter="old">Stariji (5+g)</button>
+      <button class="filter-btn" data-filter="cheap">Jeftini (5k€)</button>
+    </div>
+
+    <button class="button delete-all" onclick="obrisiSve()">Obriši sve oglase</button>
+
     <div class="form-section">
-      <h2>Dodaj / Uredi automobil</h2>
-      <input type="hidden" id="editIndex" />
-      <input type="text" id="naziv" placeholder="Naziv automobila" />
-      <input type="text" id="kilometri" placeholder="Kilometraža" />
-      <input type="number" id="godina" placeholder="Godina" />
-      <input type="text" id="cijena" placeholder="Cijena" />
-      <input type="text" id="vlasnik" placeholder="Kontakt broj" />
-      <textarea id="opis" placeholder="Opis"></textarea>
-      <input type="file" id="slikaFile" accept="image/*" multiple />
+      <h2>Dodaj/Uredi automobil</h2>
+      <input type="hidden" id="editId">
+      <input type="text" id="naziv" placeholder="Naziv automobila *" required>
+      <input type="text" id="kilometri" placeholder="Kilometraža">
+      <input type="number" id="godina" placeholder="Godina" min="1990" max="2024">
+      <input type="text" id="cijena" placeholder="Cijena">
+      <input type="tel" id="vlasnik" placeholder="Kontakt broj">
+      <textarea id="opis" placeholder="Opis" rows="4"></textarea>
+      <input type="file" id="slikaFile" accept="image/*" multiple>
       <button class="button" onclick="dodajIliUrediAuto()">Spremi</button>
     </div>
 
@@ -107,149 +183,349 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'auto_oglasi_lista';
+    const DB_NAME = 'AutoOglasiDB';
+    const DB_VERSION = 3;
+    const STORE_NAME = 'cars';
+    let db;
+    let currentFilter = 'all';
+    let searchQuery = '';
 
-    let cars = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [
-      { id: 1, naziv: "Volkswagen Golf", kilometri: "150000 km", godina: 2015, cijena: "9,000 EUR", vlasnik: "0912345678", opis: "Odlično stanje, redovno servisiran.", slika: "img/golf.jpg" },
-      { id: 2, naziv: "Audi A4", kilometri: "120000 km", godina: 2018, cijena: "15,000 EUR", vlasnik: "0923456789", opis: "S-line paket, dizel.", slika: "img/audi_a4.jpg" },
-      { id: 3, naziv: "BMW 320d", kilometri: "170000 km", godina: 2014, cijena: "12,500 EUR", vlasnik: "0934567890", opis: "Full oprema, registriran godinu dana.", slika: "img/bmw_320d.jpg" },
-      { id: 4, naziv: "Opel Astra", kilometri: "130000 km", godina: 2017, cijena: "8,500 EUR", vlasnik: "0945678901", opis: "Prvi vlasnik, garažiran auto.", slika: "img/astra.jpg" },
-      { id: 5, naziv: "Renault Megane", kilometri: "110000 km", godina: 2016, cijena: "7,500 EUR", vlasnik: "0956789012", opis: "Mali potrošač, gradski auto.", slika: "img/megane.jpg" },
-      { id: 6, naziv: "Toyota Corolla", kilometri: "90000 km", godina: 2019, cijena: "13,000 EUR", vlasnik: "0967890123", opis: "Pouzdan japanski auto.", slika: "img/corolla.jpg" },
-      { id: 7, naziv: "Peugeot 308", kilometri: "140000 km", godina: 2015, cijena: "6,800 EUR", vlasnik: "0978901234", opis: "Ekonomično vozilo, novi akumulator.", slika: "img/peugeot_308.jpg" },
-      { id: 8, naziv: "Ford Focus", kilometri: "160000 km", godina: 2016, cijena: "7,000 EUR", vlasnik: "0989012345", opis: "Dobro očuvan, uredna unutrašnjost.", slika: "img/focus.jpg" },
-      { id: 9, naziv: "Mazda 3", kilometri: "100000 km", godina: 2018, cijena: "10,000 EUR", vlasnik: "0990123456", opis: "Dinamična vožnja, redovni servisi.", slika: "img/mazda3.jpg" },
-      { id: 10, naziv: "Hyundai i30", kilometri: "95000 km", godina: 2019, cijena: "9,500 EUR", vlasnik: "0911234567", opis: "Mali gradski auto, odlična oprema.", slika: "img/i30.jpg" }
-    ];
+    // Database Setup
+    const openDB = () => {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    function spremiULokalnuMemoriju() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cars));
-    }
-
-    function prikaziOglase() {
-      const oglasiDiv = document.getElementById('oglasi');
-      oglasiDiv.innerHTML = '';
-
-      cars.forEach((auto, index) => {
-        const card = document.createElement('div');
-        card.className = 'card';
-
-        card.innerHTML = `
-          <img src="${(auto.slike && auto.slike[0]) || auto.slika}" alt="${auto.naziv}" />
-          <div class="card-content">
-            <h3>${auto.naziv}</h3>
-            <p>${auto.kilometri}</p>
-            <p>${auto.cijena}</p>
-            <button class="button" onclick="event.stopPropagation(); urediAuto(${index})">Uredi</button>
-            <button class="button" onclick="event.stopPropagation(); obrisiAuto(${index})">Obriši</button>
-          </div>
-        `;
-
-        card.onclick = () => {
-          window.location.href = `detalji.html?id=${auto.id}`;
+        request.onupgradeneeded = (event) => {
+          db = event.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            store.createIndex('godina', 'godina');
+            store.createIndex('cijena', 'cijena');
+          }
         };
 
-        oglasiDiv.appendChild(card);
+        request.onsuccess = (event) => {
+          db = event.target.result;
+          resolve(db);
+        };
+
+        request.onerror = (event) => reject(event.target.error);
       });
-    }
+    };
 
-    function dodajIliUrediAuto() {
-      const editIndex = document.getElementById('editIndex').value;
-      const files = document.getElementById('slikaFile').files;
+    // Database Operations
+    const getAllCars = async () => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      return new Promise((resolve) => {
+        store.getAll().onsuccess = (e) => resolve(e.target.result || []);
+      });
+    };
 
-      const naziv = document.getElementById('naziv').value;
-      const kilometri = document.getElementById('kilometri').value;
-      const godina = document.getElementById('godina').value;
-      const cijena = document.getElementById('cijena').value;
-      const vlasnik = document.getElementById('vlasnik').value;
-      const opis = document.getElementById('opis').value;
+    const saveCar = async (car) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).put(car);
+      return new Promise((resolve) => tx.oncomplete = resolve);
+    };
 
-      const noviAuto = {
-        id: editIndex ? cars[editIndex].id : Date.now(),
-        naziv,
-        kilometri,
-        godina,
-        cijena,
-        vlasnik,
-        opis,
-        slike: []
-      };
+    const deleteCar = async (id) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).delete(id);
+      return new Promise((resolve) => tx.oncomplete = resolve);
+    };
 
-      const spremiIOsvjezi = () => {
-        if (editIndex) {
-          cars[editIndex] = noviAuto;
-        } else {
-          cars.push(noviAuto);
-        }
-        spremiULokalnuMemoriju();
-        ocistiFormu();
-        prikaziOglase();
-      };
-
-      if (files.length > 0) {
-        let ucitane = 0;
-        Array.from(files).forEach(file => {
-          const reader = new FileReader();
-          reader.onload = e => {
-            noviAuto.slike.push(e.target.result);
-            ucitane++;
-            if (ucitane === files.length) {
-              spremiIOsvjezi();
-            }
+    // Image Handling
+    const compressImage = (file) => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const scale = Math.min(800 / img.width, 800 / img.height);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(blob => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            }, 'image/jpeg', 0.7);
           };
-          reader.readAsDataURL(file);
-        });
-      } else {
-        // Ako nema novih slika, koristi stare (ako uređujemo)
-        if (editIndex) {
-          noviAuto.slike = cars[editIndex].slike || [cars[editIndex].slika];
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+
+    // Core Functions
+    async function prikaziOglase() {
+      const cars = await getAllCars();
+      const filtered = cars.filter(car => {
+        const searchMatch = car.naziv.toLowerCase().includes(searchQuery) ||
+          car.opis.toLowerCase().includes(searchQuery);
+        const currentYear = new Date().getFullYear();
+        const age = currentYear - car.godina;
+        const price = parseFloat(car.cijena.replace(/[^\d.]/g, ''));
+
+        switch (currentFilter) {
+          case 'new': return age <= 2 && searchMatch;
+          case 'old': return age >= 5 && searchMatch;
+          case 'cheap': return price < 5000 && searchMatch;
+          default: return searchMatch;
         }
-        spremiIOsvjezi();
-      }
+      });
+
+      const oglasiDiv = document.getElementById('oglasi');
+      oglasiDiv.innerHTML = filtered.map(car => `
+        <div class="card" onclick="window.location.href='detalji.html?id=${car.id}'">
+          <img src="${car.slike?.[0] || 'img/placeholder.jpg'}" alt="${car.naziv}">
+          <div class="card-content">
+            <h3>${car.naziv}</h3>
+            <p>${car.kilometri}</p>
+            <p>${car.cijena}</p>
+            <div class="card-actions">
+              <button class="button" onclick="event.stopPropagation(); urediAuto(${car.id})">Uredi</button>
+              <button class="button delete-btn" onclick="event.stopPropagation(); obrisiAuto(${car.id})">Obriši</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
     }
 
+    async function dodajIliUrediAuto() {
+      const editId = document.getElementById('editId').value;
+      const isEdit = !!editId;
+      const existingCar = isEdit ? await getCar(parseInt(editId)) : null;
 
-    function urediAuto(index) {
-      const auto = cars[index];
-      document.getElementById('editIndex').value = index;
-      document.getElementById('naziv').value = auto.naziv;
-      document.getElementById('kilometri').value = auto.kilometri;
-      document.getElementById('godina').value = auto.godina;
-      document.getElementById('cijena').value = auto.cijena;
-      document.getElementById('vlasnik').value = auto.vlasnik;
-      document.getElementById('opis').value = auto.opis;
+      const car = {
+        id: isEdit ? parseInt(editId) : Date.now(),
+        naziv: document.getElementById('naziv').value,
+        kilometri: document.getElementById('kilometri').value,
+        godina: parseInt(document.getElementById('godina').value),
+        cijena: document.getElementById('cijena').value,
+        vlasnik: document.getElementById('vlasnik').value,
+        opis: document.getElementById('opis').value,
+        slike: await handleImageUpload(existingCar?.slike || []),
+        createdAt: existingCar?.createdAt || new Date().toISOString()
+      };
+
+      await saveCar(car);
+      await prikaziOglase();
+      ocistiFormu();
+    }
+
+    async function handleImageUpload(existingImages = []) {
+      const files = document.getElementById('slikaFile').files;
+      if (!files.length) return existingImages;
+      return [...existingImages, ...await Promise.all([...files].map(compressImage))];
+    }
+
+    async function urediAuto(id) {
+      const car = await getCar(id);
+      document.getElementById('editId').value = car.id;
+      document.getElementById('naziv').value = car.naziv;
+      document.getElementById('kilometri').value = car.kilometri;
+      document.getElementById('godina').value = car.godina;
+      document.getElementById('cijena').value = car.cijena;
+      document.getElementById('vlasnik').value = car.vlasnik;
+      document.getElementById('opis').value = car.opis;
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function obrisiAuto(index) {
-      if (confirm("Jeste li sigurni da želite obrisati ovaj oglas?")) {
-        cars.splice(index, 1);
-        spremiULokalnuMemoriju();
-        prikaziOglase();
-      }
+    async function obrisiAuto(id) {
+      if (!confirm("Jeste li sigurni?")) return;
+      await deleteCar(id);
+      await prikaziOglase();
     }
 
-    function obrisiSve() {
-      if (confirm("Jeste li sigurni da želite obrisati sve oglase?")) {
-        localStorage.removeItem(STORAGE_KEY);
-        cars = [];
-        location.reload();
-        prikaziOglase();
-      }
+    async function obrisiSve() {
+      if (!confirm("Ovo će obrisati SVE oglase!")) return;
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).clear();
+      await prikaziOglase();
+      location.reload();
     }
 
     function ocistiFormu() {
-      document.getElementById('editIndex').value = '';
-      document.getElementById('naziv').value = '';
-      document.getElementById('kilometri').value = '';
-      document.getElementById('godina').value = '';
-      document.getElementById('cijena').value = '';
-      document.getElementById('vlasnik').value = '';
-      document.getElementById('opis').value = '';
-      document.getElementById('slikaFile').value = '';
+      document.getElementById('editId').value = '';
+      document.querySelectorAll('#form-section input, #form-section textarea').forEach(el => el.value = '');
     }
 
-    prikaziOglase();
+    // Initialization
+    (async () => {
+      await openDB();
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        searchQuery = e.target.value.toLowerCase();
+        prikaziOglase();
+      });
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentFilter = btn.dataset.filter;
+          prikaziOglase();
+        });
+      });
+      await prikaziOglase();
+    })();
+
+    async function getCar(id) {
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        tx.objectStore(STORE_NAME).get(id).onsuccess = (e) => resolve(e.target.result);
+      });
+    }
+
+    async function checkInitialData() {
+      const cars = await getAllCars();
+      if (cars.length === 0) {
+        const hardcodedCars = [
+          {
+            id: 1,
+            naziv: "Volkswagen Golf",
+            kilometri: "150000 km",
+            godina: 2015,
+            cijena: "9000 EUR",
+            vlasnik: "0912345678",
+            opis: "Odlično stanje, redovno servisiran.",
+            slike: ["img/golf.jpg"],
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 2,
+            naziv: "Audi A4",
+            kilometri: "120000 km",
+            godina: 2018,
+            cijena: "15000 EUR",
+            vlasnik: "0923456789",
+            opis: "S-line paket, dizel.",
+            slike: ["img/audi_a4.jpg"],
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 3,
+            naziv: "BMW 320d",
+            kilometri: "170000 km",
+            godina: 2014,
+            cijena: "12500 EUR",
+            vlasnik: "0934567890",
+            opis: "Full oprema, registriran godinu dana.",
+            slike: ["img/bmw_320d.jpg"],
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 4,
+            naziv: "Opel Astra",
+            kilometri: "130000 km",
+            godina: 2017,
+            cijena: "8500 EUR",
+            vlasnik: "0945678901",
+            opis: "Prvi vlasnik, garažiran auto.",
+            slike: ["img/astra.jpg"],
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 5,
+            naziv: "Renault Megane",
+            kilometri: "110000 km",
+            godina: 2016,
+            cijena: "7500 EUR",
+            vlasnik: "0956789012",
+            opis: "Mali potrošač, gradski auto.",
+            slike: ["img/megane.jpg"],
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 6,
+            naziv: "Toyota Corolla",
+            kilometri: "90000 km",
+            godina: 2019,
+            cijena: "13000 EUR",
+            vlasnik: "0967890123",
+            opis: "Pouzdan japanski auto.",
+            slike: ["img/corolla.jpg"],
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 7,
+            naziv: "Peugeot 308",
+            kilometri: "140000 km",
+            godina: 2015,
+            cijena: "6800 EUR",
+            vlasnik: "0978901234",
+            opis: "Ekonomično vozilo, novi akumulator.",
+            slike: ["img/peugeot_308.jpg"],
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 8,
+            naziv: "Ford Focus",
+            kilometri: "160000 km",
+            godina: 2016,
+            cijena: "7000 EUR",
+            vlasnik: "0989012345",
+            opis: "Dobro očuvan, uredna unutrašnjost.",
+            slike: ["img/focus.jpg"],
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 9,
+            naziv: "Mazda 3",
+            kilometri: "100000 km",
+            godina: 2018,
+            cijena: "10000 EUR",
+            vlasnik: "0990123456",
+            opis: "Dinamična vožnja, redovni servisi.",
+            slike: ["img/mazda3.jpg"],
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 10,
+            naziv: "Hyundai i30",
+            kilometri: "95000 km",
+            godina: 2019,
+            cijena: "9500 EUR",
+            vlasnik: "0911234567",
+            opis: "Mali gradski auto, odlična oprema.",
+            slike: ["img/i30.jpg"],
+            createdAt: new Date().toISOString()
+          }
+        ];
+
+        // Add all hardcoded cars to the database
+        for (const car of hardcodedCars) {
+          await saveCar(car);
+        }
+      }
+    }
+    (async () => {
+      await openDB();
+      await checkInitialData();
+
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        searchQuery = e.target.value.toLowerCase();
+        prikaziOglase();
+      });
+
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentFilter = btn.dataset.filter;
+          prikaziOglase();
+        });
+      });
+
+      await prikaziOglase();
+    })();
+
+    function ocistiFormu() {
+      document.getElementById('editId').value = '';
+      document.querySelectorAll('.form-section input, .form-section textarea').forEach(el => el.value = '');
+    }
+  </script>
   </script>
 </body>
 

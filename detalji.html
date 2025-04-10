@@ -25,31 +25,52 @@
     h1 {
       text-align: center;
       margin-bottom: 30px;
+      color: #2c3e50;
     }
 
     .car-image {
       width: 100%;
-      height: auto;
-      max-height: 400px;
+      height: 400px;
       object-fit: cover;
       border-radius: 12px;
       margin-bottom: 20px;
     }
 
-    .info {
-      line-height: 1.8;
-      font-size: 18px;
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
     }
 
-    .info strong {
-      display: inline-block;
-      width: 120px;
+    .info-item {
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .label {
+      display: block;
+      color: #6c757d;
+      font-size: 0.9em;
+      margin-bottom: 5px;
+    }
+
+    .value {
+      font-size: 1.1em;
+      color: #2c3e50;
+    }
+
+    .description {
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
     }
 
     .back-button {
       display: inline-block;
       margin-top: 30px;
-      padding: 10px 20px;
+      padding: 12px 25px;
       background-color: #007bff;
       color: white;
       text-decoration: none;
@@ -61,19 +82,33 @@
       background-color: #0056b3;
     }
 
-    /* Thumbnails Styling */
+    .carousel-nav {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+    }
+
     .thumbnail {
       width: 80px;
       height: 60px;
       object-fit: cover;
       border-radius: 6px;
-      margin-right: 8px;
       cursor: pointer;
       border: 2px solid transparent;
     }
 
     .thumbnail.active {
       border-color: #007bff;
+    }
+
+    .carousel-button {
+      padding: 10px 20px;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -86,112 +121,103 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'auto_oglasi_lista';
+    const DB_NAME = 'AutoOglasiDB';
+    const STORE_NAME = 'cars';
+    let db;
+    let currentCar = null;
+    let currentImageIndex = 0;
 
-    const fallbackCars = [
-      { id: 1, naziv: "Volkswagen Golf", kilometri: "150000 km", godina: 2015, cijena: "9,000 EUR", vlasnik: "0912345678", opis: "Odlično stanje, redovno servisiran.", slika: "img/golf.jpg" },
-      { id: 2, naziv: "Audi A4", kilometri: "120000 km", godina: 2018, cijena: "15,000 EUR", vlasnik: "0923456789", opis: "S-line paket, dizel.", slika: "img/audi_a4.jpg" },
-      { id: 3, naziv: "BMW 320d", kilometri: "170000 km", godina: 2014, cijena: "12,500 EUR", vlasnik: "0934567890", opis: "Full oprema, registriran godinu dana.", slika: "img/bmw_320d.jpg" },
-      { id: 4, naziv: "Opel Astra", kilometri: "130000 km", godina: 2017, cijena: "8,500 EUR", vlasnik: "0945678901", opis: "Prvi vlasnik, garažiran auto.", slika: "img/astra.jpg" },
-      { id: 5, naziv: "Renault Megane", kilometri: "110000 km", godina: 2016, cijena: "7,500 EUR", vlasnik: "0956789012", opis: "Mali potrošač, gradski auto.", slika: "img/megane.jpg" },
-      { id: 6, naziv: "Toyota Corolla", kilometri: "90000 km", godina: 2019, cijena: "13,000 EUR", vlasnik: "0967890123", opis: "Pouzdan japanski auto.", slika: "img/corolla.jpg" },
-      { id: 7, naziv: "Peugeot 308", kilometri: "140000 km", godina: 2015, cijena: "6,800 EUR", vlasnik: "0978901234", opis: "Ekonomično vozilo, novi akumulator.", slika: "img/peugeot_308.jpg" },
-      { id: 8, naziv: "Ford Focus", kilometri: "160000 km", godina: 2016, cijena: "7,000 EUR", vlasnik: "0989012345", opis: "Dobro očuvan, uredna unutrašnjost.", slika: "img/focus.jpg" },
-      { id: 9, naziv: "Mazda 3", kilometri: "100000 km", godina: 2018, cijena: "10,000 EUR", vlasnik: "0990123456", opis: "Dinamična vožnja, redovni servisi.", slika: "img/mazda3.jpg" },
-      { id: 10, naziv: "Hyundai i30", kilometri: "95000 km", godina: 2019, cijena: "9,500 EUR", vlasnik: "0911234567", opis: "Mali gradski auto, odlična oprema.", slika: "img/i30.jpg" }
-    ];
-
-    function dohvatiParametarIzURLa(naziv) {
-      const urlParams = new URLSearchParams(window.location.search);
-      return urlParams.get(naziv);
+    async function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 3);
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve();
+        };
+        request.onerror = (e) => reject(e.target.error);
+      });
     }
 
-    function prikaziDetalje() {
-      const id = parseInt(dohvatiParametarIzURLa('id'), 10);
-      let oglasi = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    async function getCar(id) {
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        tx.objectStore(STORE_NAME).get(id).onsuccess = (e) => resolve(e.target.result);
+      });
+    }
 
-      if (!oglasi || oglasi.length === 0) {
-        oglasi = fallbackCars;
-      }
-
-      const auto = oglasi.find(o => parseInt(o.id) === id);
-      const sadrzaj = document.getElementById('sadrzaj');
-
-      if (!auto) {
-        sadrzaj.innerHTML = "<p>Oglas nije pronađen.</p>";
-        return;
-      }
-
-      const slike = auto.slike || [auto.slika || 'img/default.jpg'];
-      let currentIndex = 0;
-
-      const renderThumbnails = () => {
-        return slike.map((src, i) => `
-          <img 
-            src="${src}" 
-            class="thumbnail ${i === 0 ? 'active' : ''}" 
-            data-index="${i}" 
-          />
-        `).join('');
-      };
-
-      sadrzaj.innerHTML = `
-        <div style="position: relative; text-align: center;">
-          <img id="carouselImage" src="${slike[0]}" alt="${auto.naziv}" class="car-image" />
+    function renderDetails() {
+      const slike = currentCar.slike || [];
+      document.getElementById('sadrzaj').innerHTML = `
+        <div class="carousel">
+          <img class="car-image" src="${slike[currentImageIndex] || 'img/placeholder.jpg'}" alt="${currentCar.naziv}">
           ${slike.length > 1 ? `
-            <button id="prevBtn" style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; font-size: 24px; border-radius: 50%; width: 40px; height: 40px; cursor: pointer;">‹</button>
-            <button id="nextBtn" style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; font-size: 24px; border-radius: 50%; width: 40px; height: 40px; cursor: pointer;">›</button>
+            <div class="carousel-nav">
+              <button class="carousel-button" onclick="changeImage(-1)">‹ Prethodna</button>
+              <button class="carousel-button" onclick="changeImage(1)">Sljedeća ›</button>
+            </div>
+            <div class="thumbnails">
+              ${slike.map((img, i) => `
+                <img class="thumbnail ${i === currentImageIndex ? 'active' : ''}" 
+                     src="${img}" 
+                     onclick="currentImageIndex = ${i}; renderDetails()">
+              `).join('')}
+            </div>
           ` : ''}
         </div>
-
-        ${slike.length > 1 ? `
-          <div id="thumbnailsContainer" style="margin-top: 10px; display: flex; justify-content: center; flex-wrap: wrap;">
-            ${renderThumbnails()}
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="label">Naziv:</span>
+            <span class="value">${currentCar.naziv}</span>
           </div>
-        ` : ''}
-
-        <div class="info">
-          <p><strong>Naziv:</strong> ${auto.naziv}</p>
-          <p><strong>Kilometraža:</strong> ${auto.kilometri}</p>
-          <p><strong>Godina:</strong> ${auto.godina}</p>
-          <p><strong>Cijena:</strong> ${auto.cijena}</p>
-          <p><strong>Kontakt:</strong> ${auto.vlasnik}</p>
-          <p><strong>Opis:</strong> ${auto.opis}</p>
+          <div class="info-item">
+            <span class="label">Godina:</span>
+            <span class="value">${currentCar.godina}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Kilometraža:</span>
+            <span class="value">${currentCar.kilometri}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Cijena:</span>
+            <span class="value">${currentCar.cijena}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Kontakt:</span>
+            <span class="value">${currentCar.vlasnik}</span>
+          </div>
+        </div>
+        <div class="description">
+          <h3>Opis</h3>
+          <p>${currentCar.opis || 'Nema dostupnog opisa'}</p>
         </div>
       `;
-
-      const updateImage = () => {
-        const mainImage = document.getElementById('carouselImage');
-        const thumbnails = document.querySelectorAll('.thumbnail');
-        mainImage.src = slike[currentIndex];
-
-        thumbnails.forEach((thumb, i) => {
-          thumb.style.border = i === currentIndex ? '2px solid #007bff' : '2px solid transparent';
-          thumb.classList.toggle('active', i === currentIndex);
-        });
-      };
-
-      if (slike.length > 1) {
-        document.getElementById('prevBtn').addEventListener('click', () => {
-          currentIndex = (currentIndex - 1 + slike.length) % slike.length;
-          updateImage();
-        });
-
-        document.getElementById('nextBtn').addEventListener('click', () => {
-          currentIndex = (currentIndex + 1) % slike.length;
-          updateImage();
-        });
-
-        document.querySelectorAll('.thumbnail').forEach(thumb => {
-          thumb.addEventListener('click', () => {
-            currentIndex = parseInt(thumb.getAttribute('data-index'), 10);
-            updateImage();
-          });
-        });
-      }
     }
 
-    document.addEventListener('DOMContentLoaded', prikaziDetalje);
+    window.changeImage = (dir) => {
+      currentImageIndex = (currentImageIndex + dir + (currentCar.slike?.length || 0)) % (currentCar.slike?.length || 1);
+      renderDetails();
+    };
+
+    (async () => {
+      try {
+        await initDB();
+        const urlParams = new URLSearchParams(window.location.search);
+        const carId = parseInt(urlParams.get('id'));
+
+        if (!carId) throw new Error('Nevažeći ID');
+
+        currentCar = await getCar(carId);
+        if (!currentCar) throw new Error('Oglas nije pronađen');
+
+        renderDetails();
+      } catch (error) {
+        document.getElementById('sadrzaj').innerHTML = `
+          <div class="error">
+            <p>${error.message}</p>
+          </div>
+        `;
+      }
+    })();
   </script>
 </body>
 
