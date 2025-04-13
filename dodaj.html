@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="hr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dodaj Oglas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2c3e50;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-nav a {
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: background 0.2s;
+        }
+
+        .sidebar-nav a:hover {
+            background: #34495e;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            background: #f9f9f9;
+        }
+
+        .form-section {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-section input,
+        .form-section textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .form-section h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+
+        .button {
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .button:hover {
+            background-color: #0056b3;
+        }
+
+        #slikaFile {
+            padding: 15px;
+            border: 2px dashed #eee;
+            margin: 15px 0;
+            width: 100%;
+        }
+
+        .existing-images {
+            margin-bottom: 20px;
+        }
+
+        .image-preview {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .thumbnail {
+            width: 100px;
+            height: 75px;
+            object-fit: cover;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .thumbnail.removed {
+            opacity: 0.5;
+            border-color: #dc3545;
+            filter: grayscale(100%);
+        }
+
+        .delete-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="sidebar">
+        <ul class="sidebar-nav">
+            <li><a href="index.html">🏠 Auto Oglasi</a></li>
+            <li><a href="dodaj.html">➕ Dodaj Oglas</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <div class="form-section">
+            <h2>Dodaj/Uredi automobil</h2>
+            <div id="existingImagesContainer"></div>
+            <input type="hidden" id="editId">
+            <input type="text" id="naziv" placeholder="Naziv automobila *" required>
+            <input type="text" id="kilometri" placeholder="Kilometraža">
+            <input type="number" id="godina" placeholder="Godina" min="1990" max="2024">
+            <input type="text" id="cijena" placeholder="Cijena">
+            <input type="tel" id="vlasnik" placeholder="Kontakt broj">
+            <textarea id="opis" placeholder="Opis" rows="4"></textarea>
+            <input type="file" id="slikaFile" accept="image/*" multiple>
+            <button class="button" onclick="handleSave()">Spremi oglas</button>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = 'http://localhost/auto-oglasi/php';
+
+        // Initialize form with existing data
+        (async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const carId = urlParams.get('id');
+
+            if (carId) {
+                try {
+                    const response = await fetch(`${API_BASE}/get_cars.php`);
+                    const cars = await response.json();
+                    const car = cars.find(c => c.id == carId);
+
+                    if (car) {
+                        // Populate form fields
+                        document.getElementById('editId').value = car.id;
+                        document.getElementById('naziv').value = car.naziv;
+                        document.getElementById('kilometri').value = car.kilometri;
+                        document.getElementById('godina').value = car.godina;
+                        document.getElementById('cijena').value = car.cijena;
+                        document.getElementById('vlasnik').value = car.vlasnik;
+                        document.getElementById('opis').value = car.opis;
+
+                        // Display existing images
+                        const images = Array.isArray(car.slike) ? car.slike : [];
+                        if (images.length > 0) {
+                            const container = document.getElementById('existingImagesContainer');
+                            container.innerHTML = `
+                <div class="existing-images">
+                  <h3>Postojeće slike (klikni za uklanjanje)</h3>
+                  <div class="image-preview">
+                    ${images.map(img => `
+                      <div class="thumbnail-container">
+                        <img src="${img}" class="thumbnail" onclick="toggleImageRemoval(this)">
+                        <div class="delete-badge">×</div>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              `;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading car data:', error);
+                }
+            }
+        })();
+
+        function toggleImageRemoval(imgElement) {
+            imgElement.classList.toggle('removed');
+        }
+
+        async function handleSave() {
+            try {
+                const car = await prepareCarData();
+                const result = await saveCar(car);
+
+                if (result.success) {
+                    window.location.href = 'index.html';
+                } else {
+                    alert('Greška pri spremanju: ' + (result.message || 'Nepoznata greška'));
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                alert('Greška: ' + error.message);
+            }
+        }
+
+        async function prepareCarData() {
+            const files = document.getElementById('slikaFile').files;
+            const newImages = await handleImageUpload(files);
+
+            // Get existing images that weren't removed
+            const existingImages = Array.from(document.querySelectorAll('.thumbnail:not(.removed)'))
+                .map(img => img.src);
+
+            return {
+                id: document.getElementById('editId').value || null,
+                naziv: document.getElementById('naziv').value,
+                kilometri: document.getElementById('kilometri').value,
+                godina: parseInt(document.getElementById('godina').value) || 0,
+                cijena: document.getElementById('cijena').value,
+                vlasnik: document.getElementById('vlasnik').value,
+                opis: document.getElementById('opis').value,
+                slike: [...existingImages, ...newImages]
+            };
+        }
+
+        async function handleImageUpload(files) {
+            try {
+                const compressedImages = await Promise.all(
+                    [...files].map(file => compressImage(file))
+                );
+                return compressedImages.filter(img => !!img);
+            } catch (error) {
+                console.error('Image upload error:', error);
+                alert(`Image error: ${error.message}`);
+                return [];
+            }
+        }
+
+        const compressImage = (file) => {
+            return new Promise((resolve, reject) => {
+                if (!file.type.startsWith('image/')) {
+                    reject(new Error('Only image files are allowed'));
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onerror = () => reject(new Error('File reading failed'));
+
+                reader.onload = async (e) => {
+                    try {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onerror = () => reject(new Error('Image loading failed'));
+
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+
+                            // Calculate new dimensions
+                            let width = img.width;
+                            let height = img.height;
+                            const MAX_SIZE = 1024;
+
+                            if (width > height && width > MAX_SIZE) {
+                                height *= MAX_SIZE / width;
+                                width = MAX_SIZE;
+                            } else if (height > MAX_SIZE) {
+                                width *= MAX_SIZE / height;
+                                height = MAX_SIZE;
+                            }
+
+                            // Set canvas dimensions
+                            canvas.width = width;
+                            canvas.height = height;
+
+                            // Draw and compress
+                            ctx.drawImage(img, 0, 0, width, height);
+                            canvas.toBlob(blob => {
+                                const reader = new FileReader();
+                                reader.onload = () => resolve(reader.result);
+                                reader.onerror = () => reject(new Error('Blob conversion failed'));
+                                reader.readAsDataURL(blob);
+                            }, 'image/webp', 0.85); // Use modern WebP format
+                        };
+
+                        img.src = e.target.result;
+                    } catch (error) {
+                        reject(new Error(`Processing failed: ${error.message}`));
+                    }
+                };
+
+                reader.readAsDataURL(file);
+            });
+        };
+
+        async function saveCar(car) {
+            const url = car.id ? `${API_BASE}/update_car.php` : `${API_BASE}/add_car.php`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(car)
+                });
+                return await response.json();
+            } catch (error) {
+                throw new Error('Greška u mrežnoj komunikaciji');
+            }
+        }
+    </script>
+</body>
+
+</html>

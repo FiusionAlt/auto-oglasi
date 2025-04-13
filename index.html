@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="hr">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,21 +7,75 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f2f2f2;
       margin: 0;
       padding: 0;
+      min-height: 100vh;
+      transition: margin-left 0.3s;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: #2c3e50;
+      padding: 20px;
+      box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+      position: fixed;
+      height: 100%;
+      left: 0;
+      transition: transform 0.3s;
+      z-index: 1000;
+    }
+
+    .sidebar.hidden {
+      transform: translateX(-100%);
+    }
+
+    .sidebar-toggle {
+      position: fixed;
+      left: 210px;
+      top: 10px;
+      background: #2c3e50;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 1001;
+      transition: all 0.3s;
+    }
+
+    .sidebar-toggle.hidden {
+      left: 15px;
     }
 
     .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
+      margin-left: 250px;
+      padding: 30px;
+      background: #f9f9f9;
+      transition: margin-left 0.3s;
     }
 
-    h1 {
-      text-align: center;
-      margin-bottom: 30px;
-      color: #2c3e50;
+    .container.full-width {
+      margin-left: 0;
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      transition: background 0.2s;
+    }
+
+    .sidebar-nav a:hover {
+      background: #34495e;
     }
 
     .search-filters {
@@ -37,19 +90,17 @@
     }
 
     .filter-btn {
-      padding: 8px 16px;
-      border-radius: 20px;
-      background: #e9ecef;
-      border: 1px solid #dee2e6;
+      padding: 10px 20px;
+      border-radius: 8px;
+      background: #007bff;
+      color: white;
+      border: none;
       cursor: pointer;
       transition: all 0.2s;
-      font-size: 14px;
     }
 
     .filter-btn.active {
-      background: #007bff;
-      color: white;
-      border-color: #007bff;
+      background: #0056b3;
     }
 
     .search-bar {
@@ -78,12 +129,12 @@
     }
 
     .card:hover {
-      transform: translateY(-5px);
+      transform: scale(1.02);
     }
 
     .card img {
       width: 100%;
-      height: 200px;
+      height: 180px;
       object-fit: cover;
       border-bottom: 1px solid #eee;
     }
@@ -117,51 +168,53 @@
       background-color: #0056b3;
     }
 
-    .form-section {
-      margin-bottom: 40px;
-      background: white;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    .form-section input,
-    .form-section textarea {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 15px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 16px;
-    }
-
     .delete-all {
-      background-color: #e74c3c;
-      margin-bottom: 20px;
+      background-color: #dc3545;
     }
 
     .delete-all:hover {
-      background-color: #c0392b;
+      background-color: #bb2d3b;
     }
 
-    .sync-btn {
-      background-color: #28a745;
-      margin-left: 10px;
-    }
-
-    .sync-btn:hover {
-      background-color: #218838;
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 1rem;
     }
 
     @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      
+      .sidebar.visible {
+        transform: translateX(0);
+      }
+      
+      .container {
+        margin-left: 0;
+      }
+      
+      .sidebar-toggle {
+        left: 20px;
+      }
+      
       .grid {
         grid-template-columns: 1fr;
       }
     }
   </style>
 </head>
-
 <body>
+  <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+  
+  <nav class="sidebar">
+    <ul class="sidebar-nav">
+      <li><a href="index.html">🏠 Auto Oglasi</a></li>
+      <li><a href="dodaj.html">➕ Dodaj Oglas</a></li>
+    </ul>
+  </nav>
+
   <div class="container">
     <h1>Auto Oglasi</h1>
 
@@ -170,171 +223,89 @@
       <button class="filter-btn active" data-filter="all">Svi</button>
       <button class="filter-btn" data-filter="new">Novi (0-2g)</button>
       <button class="filter-btn" data-filter="old">Stariji (5+g)</button>
-      <button class="filter-btn" data-filter="cheap">Jeftini (5k€)</button>
+      <button class="filter-btn" data-filter="cheap">Jeftini <br>(manje od 5k€)</button>
     </div>
 
     <div>
       <button class="button delete-all" onclick="obrisiSve()">Obriši sve oglase</button>
-      <button class="button sync-btn" onclick="syncWithCloud()">Sinkroniziraj s cloudom</button>
-    </div>
-
-    <div class="form-section">
-      <h2>Dodaj/Uredi automobil</h2>
-      <input type="hidden" id="editId">
-      <input type="text" id="naziv" placeholder="Naziv automobila *" required>
-      <input type="text" id="kilometri" placeholder="Kilometraža">
-      <input type="number" id="godina" placeholder="Godina" min="1990" max="2024">
-      <input type="text" id="cijena" placeholder="Cijena">
-      <input type="tel" id="vlasnik" placeholder="Kontakt broj">
-      <textarea id="opis" placeholder="Opis" rows="4"></textarea>
-      <input type="file" id="slikaFile" accept="image/*" multiple>
-      <button class="button" onclick="dodajIliUrediAuto()">Spremi</button>
     </div>
 
     <div id="oglasi" class="grid"></div>
   </div>
 
   <script>
-    // Configuration
-    const GIST_ID = 'b9a62a1f2d5ccc2b20977c2e9016e2e7'; // Replace with your gist ID
-    const GITHUB_TOKEN = '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'; // Replace with your GitHub token
-    const GIST_FILENAME = 'auto-oglasi.json';
+    // Sidebar functionality
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.sidebar');
+      const container = document.querySelector('.container');
+      const toggleBtn = document.querySelector('.sidebar-toggle');
 
-    // IndexedDB Configuration (REQUIRED)
-    const DB_NAME = 'AutoOglasiDB';
-    const DB_VERSION = 3;
-    const STORE_NAME = 'cars';
+      sidebar.classList.toggle('hidden');
+      container.classList.toggle('full-width');
+      toggleBtn.classList.toggle('hidden');
+      toggleBtn.innerHTML = sidebar.classList.contains('hidden') ? '☰' : '×';
+      sidebar.classList.toggle('visible');
+    }
 
-    // State
-    let db;
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 768) {
+        const sidebar = document.querySelector('.sidebar');
+        const toggleBtn = document.querySelector('.sidebar-toggle');
+        
+        if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
+          sidebar.classList.remove('visible');
+          toggleBtn.innerHTML = '☰';
+        }
+      }
+    });
+
+    window.addEventListener('load', () => {
+      const isSidebarOpen = localStorage.getItem('sidebarOpen') === 'true';
+      if (isSidebarOpen) toggleSidebar();
+    });
+
+    window.addEventListener('beforeunload', () => {
+      const sidebar = document.querySelector('.sidebar');
+      localStorage.setItem('sidebarOpen', !sidebar.classList.contains('hidden'));
+    });
+
+    // Original functionality
+    const API_BASE = 'http://localhost/auto-oglasi/php';
     let currentFilter = 'all';
     let searchQuery = '';
-    let isOnline = navigator.onLine;
 
-    // Database Setup
-    const openDB = () => {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-        request.onupgradeneeded = (event) => {
-          db = event.target.result;
-          if (!db.objectStoreNames.contains(STORE_NAME)) {
-            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-            store.createIndex('godina', 'godina');
-            store.createIndex('cijena', 'cijena');
-          }
-        };
-
-        request.onsuccess = (event) => {
-          db = event.target.result;
-          resolve(db);
-        };
-
-        request.onerror = (event) => reject(event.target.error);
-      });
-    };
-
-    // Database Operations
     const getAllCars = async () => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      return new Promise((resolve) => {
-        store.getAll().onsuccess = (e) => resolve(e.target.result || []);
-      });
-    };
-
-    const saveCar = async (car) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).put(car);
-      return new Promise((resolve) => tx.oncomplete = resolve);
+      try {
+        const response = await fetch(`${API_BASE}/get_cars.php`);
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching cars:', error);
+        return [];
+      }
     };
 
     const deleteCar = async (id) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).delete(id);
-      return new Promise((resolve) => tx.oncomplete = resolve);
-    };
-
-    async function loadFromCloud() {
       try {
-        const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
-        const data = await response.json();
-        return JSON.parse(data.files[GIST_FILENAME].content).cars || [];
+        await fetch(`${API_BASE}/delete_car.php?id=${id}`);
       } catch (error) {
-        console.error('Gist load error:', error);
-        return [];
-      }
-    }
-
-    async function saveToCloud(cars) {
-      try {
-        const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${GITHUB_TOKEN}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            files: {
-              [GIST_FILENAME]: {
-                content: JSON.stringify({ cars })
-              }
-            }
-          })
-        });
-
-        if (response.status === 403) throw new Error('Rate limited - try again later');
-        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-
-        return await response.json();
-      } catch (error) {
-        console.error('Gist save error:', error);
+        console.error('Error deleting car:', error);
         throw error;
       }
-    }
-    // Sync Functionality
-    async function syncWithCloud() {
-      if (!isOnline) {
-        alert('Niste spojeni na internet!');
-        return;
-      }
-
-      try {
-        const localCars = await getAllCars();
-        await saveToCloud(localCars);
-        alert('Sinkronizacija uspješna! Nova bin ID: ' + CURRENT_BIN_ID);
-      } catch (error) {
-        console.error('Sync error:', error);
-        alert('Greška pri sinkronizaciji: ' + error.message);
-      }
-    }
-
-    // Image Handling
-    const compressImage = (file) => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const scale = Math.min(800 / img.width, 800 / img.height);
-            canvas.width = img.width * scale;
-            canvas.height = img.height * scale;
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob(blob => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result);
-              reader.readAsDataURL(blob);
-            }, 'image/jpeg', 0.7);
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
     };
 
-    // Core Functions
+    const obrisiSve = async () => {
+      if (!confirm("Ovo će obrisati SVE oglase!")) return;
+      try {
+        const cars = await getAllCars();
+        for (const car of cars) {
+          await deleteCar(car.id);
+        }
+        await prikaziOglase();
+      } catch (error) {
+        console.error('Error deleting all cars:', error);
+      }
+    };
+
     async function prikaziOglase() {
       const cars = await getAllCars();
       const filtered = cars.filter(car => {
@@ -355,7 +326,10 @@
       const oglasiDiv = document.getElementById('oglasi');
       oglasiDiv.innerHTML = filtered.map(car => `
         <div class="card" onclick="window.location.href='detalji.html?id=${car.id}'">
-          <img src="${car.slike?.[0] || 'img/placeholder.jpg'}" alt="${car.naziv}">
+          <img src="${car.slike?.[0]?.startsWith('data:image/') ? car.slike[0] : 'img/placeholder.jpg'}" 
+               alt="${car.naziv}"
+               onerror="this.src='img/placeholder.jpg'"
+               loading="lazy">
           <div class="card-content">
             <h3>${car.naziv}</h3>
             <p>${car.kilometri}</p>
@@ -369,266 +343,19 @@
       `).join('');
     }
 
-    // Update dodajIliUrediAuto function
-    async function dodajIliUrediAuto() {
-      const editId = document.getElementById('editId').value;
-      const isEdit = !!editId;
-      const existingCar = isEdit ? await getCar(parseInt(editId)) : null;
-
-      const car = {
-        id: isEdit ? parseInt(editId) : Date.now(),
-        naziv: document.getElementById('naziv').value,
-        kilometri: document.getElementById('kilometri').value,
-        godina: parseInt(document.getElementById('godina').value),
-        cijena: document.getElementById('cijena').value,
-        vlasnik: document.getElementById('vlasnik').value,
-        opis: document.getElementById('opis').value,
-        slike: await handleImageUpload(existingCar?.slike || []),
-        createdAt: existingCar?.createdAt || new Date().toISOString()
-      };
-
-      await saveCar(car);
-
-      if (isOnline) {
-        try {
-          const currentCars = await getAllCars();
-          await saveToCloud(currentCars);
-        } catch (error) {
-          console.error('Cloud sync failed:', error);
-          alert('Oglas spremljen lokalno, ali sinkronizacija nije uspjela');
-        }
-      }
-
-      await prikaziOglase();
-      ocistiFormu();
-    }
-
-
-    async function handleImageUpload(existingImages = []) {
-      const files = document.getElementById('slikaFile').files;
-      if (!files.length) return existingImages;
-      return [...existingImages, ...await Promise.all([...files].map(compressImage))];
-    }
-
     async function urediAuto(id) {
-      const car = await getCar(id);
-      document.getElementById('editId').value = car.id;
-      document.getElementById('naziv').value = car.naziv;
-      document.getElementById('kilometri').value = car.kilometri;
-      document.getElementById('godina').value = car.godina;
-      document.getElementById('cijena').value = car.cijena;
-      document.getElementById('vlasnik').value = car.vlasnik;
-      document.getElementById('opis').value = car.opis;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const cars = await getAllCars();
+      const car = cars.find(c => c.id == id);
+      window.location.href = `dodaj.html?id=${id}`;
     }
 
     async function obrisiAuto(id) {
       if (!confirm("Jeste li sigurni?")) return;
       await deleteCar(id);
-
-      // If online, try to sync with cloud
-      if (isOnline) {
-        try {
-          const currentCars = await getAllCars();
-          await saveToCloud(currentCars);
-        } catch (error) {
-          console.error('Error syncing with cloud:', error);
-        }
-      }
-
       await prikaziOglase();
     }
 
-    async function obrisiSve() {
-      if (!confirm("Ovo će obrisati SVE oglase!")) return;
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).clear();
-
-      // If online, try to sync with cloud
-      if (isOnline) {
-        try {
-          await saveToCloud([]);
-        } catch (error) {
-          console.error('Error syncing with cloud:', error);
-        }
-      }
-
-      await prikaziOglase();
-    }
-
-    async function getCar(id) {
-      return new Promise((resolve) => {
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        tx.objectStore(STORE_NAME).get(id).onsuccess = (e) => resolve(e.target.result);
-      });
-    }
-
-    async function checkInitialData() {
-      const cars = await getAllCars();
-      if (cars.length === 0) {
-        const hardcodedCars = [
-          {
-            id: 1,
-            naziv: "Volkswagen Golf",
-            kilometri: "150000 km",
-            godina: 2015,
-            cijena: "9000 EUR",
-            vlasnik: "0912345678",
-            opis: "Odlično stanje, redovno servisiran.",
-            slike: ["img/golf.jpg"],
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 2,
-            naziv: "Audi A4",
-            kilometri: "120000 km",
-            godina: 2018,
-            cijena: "15000 EUR",
-            vlasnik: "0923456789",
-            opis: "S-line paket, dizel.",
-            slike: ["img/audi_a4.jpg"],
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 3,
-            naziv: "BMW 320d",
-            kilometri: "170000 km",
-            godina: 2014,
-            cijena: "12500 EUR",
-            vlasnik: "0934567890",
-            opis: "Full oprema, registriran godinu dana.",
-            slike: ["img/bmw_320d.jpg"],
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 4,
-            naziv: "Opel Astra",
-            kilometri: "130000 km",
-            godina: 2017,
-            cijena: "8500 EUR",
-            vlasnik: "0945678901",
-            opis: "Prvi vlasnik, garažiran auto.",
-            slike: ["img/astra.jpg"],
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 5,
-            naziv: "Renault Megane",
-            kilometri: "110000 km",
-            godina: 2016,
-            cijena: "7500 EUR",
-            vlasnik: "0956789012",
-            opis: "Mali potrošač, gradski auto.",
-            slike: ["img/megane.jpg"],
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 6,
-            naziv: "Toyota Corolla",
-            kilometri: "90000 km",
-            godina: 2019,
-            cijena: "13000 EUR",
-            vlasnik: "0967890123",
-            opis: "Pouzdan japanski auto.",
-            slike: ["img/corolla.jpg"],
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 7,
-            naziv: "Peugeot 308",
-            kilometri: "140000 km",
-            godina: 2015,
-            cijena: "6800 EUR",
-            vlasnik: "0978901234",
-            opis: "Ekonomično vozilo, novi akumulator.",
-            slike: ["img/peugeot_308.jpg"],
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 8,
-            naziv: "Ford Focus",
-            kilometri: "160000 km",
-            godina: 2016,
-            cijena: "7000 EUR",
-            vlasnik: "0989012345",
-            opis: "Dobro očuvan, uredna unutrašnjost.",
-            slike: ["img/focus.jpg"],
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 9,
-            naziv: "Mazda 3",
-            kilometri: "100000 km",
-            godina: 2018,
-            cijena: "10000 EUR",
-            vlasnik: "0990123456",
-            opis: "Dinamična vožnja, redovni servisi.",
-            slike: ["img/mazda3.jpg"],
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 10,
-            naziv: "Hyundai i30",
-            kilometri: "95000 km",
-            godina: 2019,
-            cijena: "9500 EUR",
-            vlasnik: "0911234567",
-            opis: "Mali gradski auto, odlična oprema.",
-            slike: ["img/i30.jpg"],
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 11,
-            naziv: "Doggo",
-            kilometri: "95000 km",
-            godina: 2019,
-            cijena: "9500 EUR",
-            vlasnik: "0911234567",
-            opis: "Mali gradski auto, odlična oprema.",
-            slike: ["img/i30.jpg"],
-            createdAt: new Date().toISOString()
-          }
-        ];
-
-        // Add all cars to local DB
-        for (const car of hardcodedCars) {
-          await saveCar(car);
-        }
-
-        // Try cloud save if online
-        if (isOnline) {
-          try {
-            await saveToCloud(hardcodedCars);
-            console.log("Initial data saved to cloud");
-          } catch (error) {
-            console.log('Initial cloud save failed (normal if first run)');
-          }
-        }
-        return hardcodedCars;
-      }
-      return cars;
-    }
-    function ocistiFormu() {
-      document.getElementById('editId').value = '';
-      document.querySelectorAll('.form-section input, .form-section textarea').forEach(el => el.value = '');
-    }
-
-    // Network status detection
-    window.addEventListener('online', () => {
-      isOnline = true;
-      console.log('Online status: connected');
-    });
-
-    window.addEventListener('offline', () => {
-      isOnline = false;
-      console.log('Online status: disconnected');
-    });
-
-    // Initialization
     (async () => {
-      await openDB();
-      await checkInitialData();
-
       document.getElementById('searchInput').addEventListener('input', (e) => {
         searchQuery = e.target.value.toLowerCase();
         prikaziOglase();
@@ -647,5 +374,4 @@
     })();
   </script>
 </body>
-
 </html>
